@@ -20,23 +20,30 @@ from __future__ import division
 import sys
 import time
 from collections import namedtuple
-if sys.version_info.major == 2:
-    from Tkinter import Canvas, W
-    import ttk
-else:
-    from tkinter import ttk, Canvas, W
+from tkinter import ttk, Canvas, W
 
 import numpy as np
-from common import visualize_training, Entity, ENV_TARGET_NAMES, ENV_ENTITIES, ENV_AGENT_NAMES,\
-        ENV_ACTIONS, ENV_CAUGHT_REWARD, ENV_BOARD_SHAPE
+from common import visualize_training, Entity, ENV_TARGET_NAMES, ENV_ENTITIES, ENV_AGENT_NAMES, \
+    ENV_ACTIONS, ENV_CAUGHT_REWARD, ENV_BOARD_SHAPE
 from six.moves import range
 
 from malmopy.agent import AStarAgent
-from malmopy.agent import BaseAgent, RandomAgent
+from malmopy.agent import QLearnerAgent, BaseAgent, RandomAgent
 from malmopy.agent.gui import GuiAgent
 from AASMAAgent import AASMAAgent
-P_FOCUSED = .75
+
+P_FOCUSED = .5
 CELL_WIDTH = 33
+
+
+class PigChaseQLearnerAgent(QLearnerAgent):
+    """A thin wrapper around QLearnerAgent that normalizes rewards to [-1,1]"""
+
+    def act(self, state, reward, done, is_training=False):
+
+        reward /= ENV_CAUGHT_REWARD
+        return super(PigChaseQLearnerAgent, self).act(state, reward, done,
+                                                      is_training)
 
 
 class PigChaseChallengeAgent(BaseAgent):
@@ -54,8 +61,10 @@ class PigChaseChallengeAgent(BaseAgent):
         #                                  visualizer = visualizer))
         # self._agents.append(RandomAgent(name, nb_actions,
         #                                 visualizer = visualizer))
-        self._agents.append(AASMAAgent(name, "Agent_2", "Pig", visualizer=visualizer))
-        self._agents.append(AASMAAgent(name, "Agent_2", "Pig", visualizer=visualizer))
+        self._agents.append(AASMAAgent(name, ENV_AGENT_NAMES[ENV_AGENT_NAMES.index(name) - 1], ENV_TARGET_NAMES[0]))
+
+        self._agents.append(AASMAAgent(name, ENV_AGENT_NAMES[ENV_AGENT_NAMES.index(name) - 1], ENV_TARGET_NAMES[0]))
+
         self.current_agent = self._select_agent(P_FOCUSED)
 
     def _select_agent(self, p_focused):
@@ -92,6 +101,9 @@ class FocusedAgent(AStarAgent):
         if done:
             self._action_list = []
             self._previous_target_pos = None
+
+        if state is None:
+            return np.random.randint(0, self.nb_actions)
 
         entities = state[1]
         state = state[0]

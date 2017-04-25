@@ -7,9 +7,9 @@ class AASMAAgent(BaseAgent):
     ACTIONS = ENV_ACTIONS
     DOOR1_POS = (4, 1)
     DOOR2_POS = (4, 7)
-    alpha = 2.7182818284590452353/10 # genetic algorithm converged to this value :o
+    alpha = 0.4
     initial_belief = 1
-    threshold = 0.7
+    threshold = 0.5
 
     def __init__(self, name, other_agent, target, visualizer = None):
         super(AASMAAgent, self).__init__(name, len(AASMAAgent.ACTIONS), visualizer=visualizer)
@@ -28,9 +28,19 @@ class AASMAAgent(BaseAgent):
             self._action_list = []
             self._previous_target_pos = None
             self._previous_other_pos = None
+            self._previous_pos = None
             self._desires = []
             self._intentions = []
+            if reward <= 0:
+                print('i was fooled')
+                self._belief = min(0.25, self._belief)
+            elif reward <= 5:
+                print('i fooled him')
+            else:
+                self._belief = max(0.75, self._belief)
+                print('we cooperated')
             print('new episode')
+            return 0
 
         try:
             entities = state2[1]
@@ -55,6 +65,13 @@ class AASMAAgent(BaseAgent):
 
             target = [(i, j) for i, v in enumerate(state) for j, k in enumerate(v) if self._target in k][0]
 
+            if self._previous_target_pos is None:
+                self._previous_target_pos = target
+            if self._previous_other_pos is None:
+                self._previous_other_pos = other
+            if self._previous_pos is None:
+                self._previous_pos = me
+
             _, me_cost_now_door1 = self.compute_distance_to_door1(me, state)
             _, me_cost_prev_door1 = self.compute_distance_to_door1(self._previous_pos, state)
             _, me_cost_now_door2 = self.compute_distance_to_door2(me, state)
@@ -71,6 +88,12 @@ class AASMAAgent(BaseAgent):
 
             other_delta_pig = other_cost_now_pig - other_cost_prev_pig
             other_delta_doors = min(other_cost_now_door1 - other_cost_prev_door1, other_cost_now_door2 - other_cost_prev_door2)
+
+            print()
+            print('pig was at %s and now is at %s' % (self._previous_target_pos, target))
+            print('prev_pig vs now_pig', other_cost_prev_pig, other_cost_now_pig)
+            print('prev_d1 vs now_d1', other_cost_prev_door1, other_cost_now_door1)
+            print('prev_d2 vs now_d2', other_cost_prev_door2, other_cost_now_door2)
 
             self._belief = self.belief_update(self._belief, other_delta_pig, other_delta_doors)
             self._desires = self.options(self._belief, min(me_cost_now_door1, me_cost_now_door2),
@@ -89,13 +112,16 @@ class AASMAAgent(BaseAgent):
             #
             #     path = self.plan(self._belief, self._intentions, me, state)
             #     self._action_list = path
+            self._previous_other_pos = other
+            self._previous_pos = me
+            self._previous_target_pos = target
 
+            
             if self._action_list is not None and len(self._action_list) > 0:
                 action = self._action_list.popleft()
                 return AASMAAgent.ACTIONS.index(action)
 
-            self._previous_other_pos = other
-            self._previous_pos = me
+
             # reached end of action list - turn on the spot
             return AASMAAgent.ACTIONS.index("turn 1")  # substitutes for a no-op command
 
@@ -106,14 +132,28 @@ class AASMAAgent(BaseAgent):
             return AASMAAgent.ACTIONS.index("turn 1")  # substitutes for a no-op command
 
     def belief_update(self, belief, other_delta_pig, other_delta_doors):
+        if other_delta_doors == 0:
+            # not going to doors
+            print ("good")
+            return min(1., belief + self.alpha)
+        elif other_delta_pig == 0:
+            # very weird behavior. random actions?
+            print("something fishy")
+            return belief - self.alpha ** 2
         if other_delta_pig < other_delta_doors:
             # he has come closer to the pig! (good guy)
+            print("good guy")
             return min(belief + self.alpha, 1.0)
         elif other_delta_pig > other_delta_doors:
             # he has come closer to the doors! (traitor)
+            print("traitor")
             return max(0.0, belief-self.alpha)
         else:
+            if other_delta_pig > 0:
+                # wtf.... random agent detected!
+                return max(0.0, belief - self.alpha)
             # i dont know what he is up to
+            print("might be good, might be bad")
             return belief
 
     def options(self, belief, me_cost_door, other_cost_door, pig_pos, state):
