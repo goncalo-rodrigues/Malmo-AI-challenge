@@ -34,7 +34,7 @@ sys.path.insert(1, os.path.join(os.path.pardir, os.getcwd()))
 from common import parse_clients_args, ENV_AGENT_NAMES, ENV_ACTIONS
 from agent import PigChaseChallengeAgent, PigChaseHumanAgent
 from environment import PigChaseEnvironment, PigChaseSymbolicStateBuilder
-
+from AASMAAgent import AASMAAgent
 EXPERIMENT_NAME = 'Pig_Chase_2xAStar'
 MAX_ACTIONS = 25 # this should match the mission definition, used for display only
 

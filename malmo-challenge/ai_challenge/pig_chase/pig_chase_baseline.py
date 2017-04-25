@@ -26,6 +26,7 @@ from threading import Thread, active_count
 from time import sleep
 
 from malmopy.agent import RandomAgent
+from AASMAAgent import AASMAAgent
 try:
     from malmopy.visualization.tensorboard import TensorboardVisualizer
     from malmopy.visualization.tensorboard.cntk import CntkConverter
@@ -88,6 +89,8 @@ def agent_factory(name, role, baseline_agent, clients, max_epochs,
 
         if baseline_agent == 'astar':
             agent = FocusedAgent(name, ENV_TARGET_NAMES[0])
+        elif baseline_agent == 'aasma':
+            agent = AASMAAgent(name, ENV_AGENT_NAMES[ENV_AGENT_NAMES.index(name)-1], ENV_TARGET_NAMES[0])
         else:
             agent = RandomAgent(name, env.available_actions)
 
@@ -142,7 +145,7 @@ def run_experiment(agents_def):
 if __name__ == '__main__':
     arg_parser = ArgumentParser('Pig Chase baseline experiment')
     arg_parser.add_argument('-t', '--type', type=str, default='astar',
-                            choices=['astar', 'random'],
+                            choices=['astar', 'random', 'aasma'],
                             help='The type of baseline to run.')
     arg_parser.add_argument('-e', '--epochs', type=int, default=5,
                             help='Number of epochs to run.')
@@ -153,6 +156,7 @@ if __name__ == '__main__':
 
     logdir = BASELINES_FOLDER % (args.type, datetime.utcnow().isoformat())
     if 'malmopy.visualization.tensorboard' in sys.modules:
+        print('visualize on')
         visualizer = TensorboardVisualizer()
         visualizer.initialize(logdir, None)
     else:

@@ -34,7 +34,7 @@ from six.moves import range
 from malmopy.agent import AStarAgent
 from malmopy.agent import BaseAgent, RandomAgent
 from malmopy.agent.gui import GuiAgent
-
+from AASMAAgent import AASMAAgent
 P_FOCUSED = .75
 CELL_WIDTH = 33
 
@@ -50,10 +50,12 @@ class PigChaseChallengeAgent(BaseAgent):
                                                      visualizer = visualizer)
 
         self._agents = []
-        self._agents.append(FocusedAgent(name, ENV_TARGET_NAMES[0],
-                                         visualizer = visualizer))
-        self._agents.append(RandomAgent(name, nb_actions,
-                                        visualizer = visualizer))
+        # self._agents.append(FocusedAgent(name, ENV_TARGET_NAMES[0],
+        #                                  visualizer = visualizer))
+        # self._agents.append(RandomAgent(name, nb_actions,
+        #                                 visualizer = visualizer))
+        self._agents.append(AASMAAgent(name, "Agent_2", "Pig", visualizer=visualizer))
+        self._agents.append(AASMAAgent(name, "Agent_2", "Pig", visualizer=visualizer))
         self.current_agent = self._select_agent(P_FOCUSED)
 
     def _select_agent(self, p_focused):
@@ -93,7 +95,6 @@ class FocusedAgent(AStarAgent):
 
         entities = state[1]
         state = state[0]
-        print('state', state)
 
         me = [(j, i) for i, v in enumerate(state) for j, k in enumerate(v) if self.name in k]
         me_details = [e for e in entities if e['name'] == self.name][0]
