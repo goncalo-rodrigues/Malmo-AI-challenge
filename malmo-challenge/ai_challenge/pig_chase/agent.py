@@ -32,7 +32,7 @@ from malmopy.agent import QLearnerAgent, BaseAgent, RandomAgent
 from malmopy.agent.gui import GuiAgent
 from AASMAAgent import AASMAAgent
 
-P_FOCUSED = .5
+P_FOCUSED = 1.
 CELL_WIDTH = 33
 
 

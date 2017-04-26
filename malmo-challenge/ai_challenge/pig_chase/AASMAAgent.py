@@ -22,6 +22,7 @@ class AASMAAgent(BaseAgent):
         self._belief = self.initial_belief
         self._desires = []
         self._intentions = []
+        self._timestep = 0
 
     def act(self, state2, reward, done, is_training=False):
         if done:
@@ -40,6 +41,7 @@ class AASMAAgent(BaseAgent):
                 self._belief = max(0.75, self._belief)
                 print('we cooperated')
             print('new episode')
+            self._timestep = 0
             return 0
 
         try:
@@ -87,7 +89,10 @@ class AASMAAgent(BaseAgent):
             _, other_cost_prev_pig = self.compute_distance_to_pig(self._previous_other_pos, self._previous_target_pos, state)
 
             other_delta_pig = other_cost_now_pig - other_cost_prev_pig
-            other_delta_doors = min(other_cost_now_door1 - other_cost_prev_door1, other_cost_now_door2 - other_cost_prev_door2)
+            if other_cost_now_door1 < other_cost_now_door2:
+                other_delta_doors = other_cost_now_door1 - other_cost_prev_door1
+            else:
+                other_delta_doors = other_cost_now_door2 - other_cost_prev_door2
 
             print()
             print('pig was at %s and now is at %s' % (self._previous_target_pos, target))
@@ -115,6 +120,7 @@ class AASMAAgent(BaseAgent):
             self._previous_other_pos = other
             self._previous_pos = me
             self._previous_target_pos = target
+            self._timestep += 1
 
             
             if self._action_list is not None and len(self._action_list) > 0:
@@ -132,29 +138,42 @@ class AASMAAgent(BaseAgent):
             return AASMAAgent.ACTIONS.index("turn 1")  # substitutes for a no-op command
 
     def belief_update(self, belief, other_delta_pig, other_delta_doors):
-        if other_delta_doors == 0:
-            # not going to doors
-            print ("good")
-            return min(1., belief + self.alpha)
-        elif other_delta_pig == 0:
-            # very weird behavior. random actions?
-            print("something fishy")
-            return belief - self.alpha ** 2
-        if other_delta_pig < other_delta_doors:
+        if self._timestep == 0:
+            return belief
+        if other_delta_pig < 0 and other_delta_pig < other_delta_doors:
             # he has come closer to the pig! (good guy)
             print("good guy")
             return min(belief + self.alpha, 1.0)
-        elif other_delta_pig > other_delta_doors:
-            # he has come closer to the doors! (traitor)
-            print("traitor")
-            return max(0.0, belief-self.alpha)
-        else:
-            if other_delta_pig > 0:
-                # wtf.... random agent detected!
-                return max(0.0, belief - self.alpha)
-            # i dont know what he is up to
-            print("might be good, might be bad")
+        elif other_delta_pig == other_delta_doors:
+            # i cant know what he is up to
+            print("idk...")
             return belief
+        else:
+            print("bad guy")
+            return max(0.0, belief - self.alpha)
+        # if other_delta_doors == 0:
+        #     # not going to doors
+        #     print ("good")
+        #     return min(1., belief + self.alpha)
+        # elif other_delta_pig == 0:
+        #     # very weird behavior. random actions?
+        #     print("something fishy")
+        #     return belief - self.alpha ** 2
+        # if other_delta_pig < other_delta_doors:
+        #     # he has come closer to the pig! (good guy)
+        #     print("good guy")
+        #     return min(belief + self.alpha, 1.0)
+        # elif other_delta_pig > other_delta_doors:
+        #     # he has come closer to the doors! (traitor)
+        #     print("traitor")
+        #     return max(0.0, belief-self.alpha)
+        # else:
+        #     if other_delta_pig > 0:
+        #         # wtf.... random agent detected!
+        #         return max(0.0, belief - self.alpha)
+        #     # i dont know what he is up to
+        #     print("might be good, might be bad")
+        #     return belief
 
     def options(self, belief, me_cost_door, other_cost_door, pig_pos, state):
         adj_positions = self.neighbors(pig_pos, state)

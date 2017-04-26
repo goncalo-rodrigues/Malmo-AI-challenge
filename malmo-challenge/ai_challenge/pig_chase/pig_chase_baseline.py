@@ -90,7 +90,7 @@ def agent_factory(name, role, baseline_agent, clients, max_epochs,
         if baseline_agent == 'astar':
             agent = FocusedAgent(name, ENV_TARGET_NAMES[0])
         elif baseline_agent == 'aasma':
-            agent = AASMAAgent(name, ENV_AGENT_NAMES[ENV_AGENT_NAMES.index(name) - 1], ENV_TARGET_NAMES[0])
+            agent = AASMAAgent(name, ENV_AGENT_NAMES[ENV_AGENT_NAMES.index(name) - 1], ENV_TARGET_NAMES[0], visualizer)
         else:
             agent = RandomAgent(name, env.available_actions)
 

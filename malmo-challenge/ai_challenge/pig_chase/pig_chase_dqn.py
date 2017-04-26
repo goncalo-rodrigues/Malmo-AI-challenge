@@ -45,7 +45,7 @@ sys.path.insert(0, os.getcwd())
 sys.path.insert(1, os.path.join(os.path.pardir, os.getcwd()))
 
 DQN_FOLDER = 'results/baselines/%s/dqn/%s-%s'
-EPOCH_SIZE = 100000
+EPOCH_SIZE = 1000
 
 
 def agent_factory(name, role, clients, device, max_epochs, logdir, visualizer):
@@ -85,12 +85,8 @@ def agent_factory(name, role, clients, device, max_epochs, logdir, visualizer):
                                       model, memory, 0.99, 32, 50000,
                                       explorer=explorer, visualizer=visualizer)
 
-        agent = PigChaseChallengeAgent(name)
-        if type(agent.current_agent) == RandomAgent:
-            agent_type = PigChaseEnvironment.AGENT_TYPE_1
-        else:
-            agent_type = PigChaseEnvironment.AGENT_TYPE_2
 
+        agent_type = PigChaseEnvironment.AGENT_TYPE_3
         obs = env.reset(agent_type)
         reward = 0
         agent_done = False
@@ -106,11 +102,6 @@ def agent_factory(name, role, clients, device, max_epochs, logdir, visualizer):
                 agent.inject_summaries(step)
                 viz_rewards = []
 
-                if type(agent.current_agent) == RandomAgent:
-                    agent_type = PigChaseEnvironment.AGENT_TYPE_1
-                else:
-                    agent_type = PigChaseEnvironment.AGENT_TYPE_2
-
                 obs = env.reset(agent_type)
                 while obs is None:
                     # this can happen if the episode ended with the first
@@ -125,6 +116,7 @@ def agent_factory(name, role, clients, device, max_epochs, logdir, visualizer):
             viz_rewards.append(reward)
 
             if (step % EPOCH_SIZE) == 0:
+                print(sum(viz_rewards) / len(viz_rewards))
                 if 'model' in locals():
                     model.save('pig_chase-dqn_%d.model' % (step / EPOCH_SIZE))
 
