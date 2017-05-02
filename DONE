@@ -1,5 +1,7 @@
 DONE
 
+-> Assumimos sempre que o agente é racional e tem sempre um objetivoqu que varia entre ir para as portas ou para o porco
+
 -> A* para calcular o custo do caminho para o adversário, para o porco e para as duas portas
    devolvemos a ação a efectuar 
    
