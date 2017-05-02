@@ -1,6 +1,8 @@
 DONE
 
--> A* para calcular o caminho para o adversário, para o porco e para as duas portas
+-> A* para calcular o custo do caminho para o adversário, para o porco e para as duas portas
+   devolvemos a ação a efectuar 
+   
 
 -> BDI
 
@@ -19,6 +21,7 @@ DONE
 
 -> Quando calculamos o A* do adversário sabemos para que posição adjacente ao porco ele vai, por isso vamos para a outra posição adjacente (a que está livre) independentemente de ser o melhor caminho ou não. 
 
+-> Por uma questão de eficiencia guardamos o resultado do A* da iteração anterior
 
 
 
