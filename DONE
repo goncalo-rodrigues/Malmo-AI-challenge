@@ -1,0 +1,26 @@
+DONE
+
+-> A* para calcular o caminho para o adversário, para o porco e para as duas portas
+
+-> BDI
+
+	* adversário vai p/ a porta + perto -> aumentamos a crença de que vai fugir
+	* adversário dirige-se para o porco -> aumentamos a crença de que vai cooperar
+	* se acreditamos que o agente está a fugir:
+		- Se estamos mais perto da porta do que ele -> fugimos
+		- Se estmaos mais longe da porta do que ele -> cooperamos
+	* se acreditamos que o agente está a cooperar
+		- cooperamos 
+	* Se o porco está numa posição em que é impossivel de apanhar:
+		- fugimos se estivermos mais perto da porta do que o outro
+		- cooperamos cc
+	
+-> Quando o adversário está numa posição adjacente ao porco e roda porque está à nossa espera verficamos a posição em que ele está para não acharmos que ele está a fugir só porque o custo aumentou.
+
+-> Quando calculamos o A* do adversário sabemos para que posição adjacente ao porco ele vai, por isso vamos para a outra posição adjacente (a que está livre) independentemente de ser o melhor caminho ou não. 
+
+
+
+
+
+
