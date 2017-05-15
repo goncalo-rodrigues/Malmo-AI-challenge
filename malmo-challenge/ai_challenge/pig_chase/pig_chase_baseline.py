@@ -37,6 +37,7 @@ except ImportError:
 from common import parse_clients_args, visualize_training, ENV_AGENT_NAMES, ENV_TARGET_NAMES
 from agent import PigChaseChallengeAgent, FocusedAgent
 from environment import PigChaseEnvironment, PigChaseSymbolicStateBuilder
+from other_agents import TitForTatAgent
 
 # Enforce path
 sys.path.insert(0, os.getcwd())
@@ -91,6 +92,8 @@ def agent_factory(name, role, baseline_agent, clients, max_epochs,
             agent = FocusedAgent(name, ENV_TARGET_NAMES[0])
         elif baseline_agent == 'aasma':
             agent = AASMAAgent(name, ENV_AGENT_NAMES[ENV_AGENT_NAMES.index(name) - 1], ENV_TARGET_NAMES[0], visualizer)
+        elif baseline_agent == 'tittat':
+            agent = TitForTatAgent(name, ENV_AGENT_NAMES[ENV_AGENT_NAMES.index(name) - 1], ENV_TARGET_NAMES[0], visualizer)
         else:
             agent = RandomAgent(name, env.available_actions)
 
@@ -145,7 +148,7 @@ def run_experiment(agents_def):
 if __name__ == '__main__':
     arg_parser = ArgumentParser('Pig Chase baseline experiment')
     arg_parser.add_argument('-t', '--type', type=str, default='astar',
-                            choices=['astar', 'random', 'aasma'],
+                            choices=['astar', 'random', 'aasma', 'tittat'],
                             help='The type of baseline to run.')
     arg_parser.add_argument('-e', '--epochs', type=int, default=5,
                             help='Number of epochs to run.')

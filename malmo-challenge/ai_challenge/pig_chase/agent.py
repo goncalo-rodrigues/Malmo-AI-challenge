@@ -23,6 +23,8 @@ from collections import namedtuple
 from tkinter import ttk, Canvas, W
 
 import numpy as np
+
+from other_agents import DefectiveAgent, TitForTatAgent
 from common import visualize_training, Entity, ENV_TARGET_NAMES, ENV_ENTITIES, ENV_AGENT_NAMES, \
     ENV_ACTIONS, ENV_CAUGHT_REWARD, ENV_BOARD_SHAPE
 from six.moves import range
@@ -32,7 +34,7 @@ from malmopy.agent import QLearnerAgent, BaseAgent, RandomAgent
 from malmopy.agent.gui import GuiAgent
 from AASMAAgent import AASMAAgent
 
-P_FOCUSED = 1.
+P_FOCUSED = 0.
 CELL_WIDTH = 33
 
 
@@ -57,14 +59,17 @@ class PigChaseChallengeAgent(BaseAgent):
                                                      visualizer = visualizer)
 
         self._agents = []
+        defective_agent = DefectiveAgent(ENV_AGENT_NAMES[0], visualizer=visualizer)
+        tit_for_tat_agent = TitForTatAgent(ENV_AGENT_NAMES[0], ENV_AGENT_NAMES[1], ENV_TARGET_NAMES[0], visualizer=visualizer)
+        self._agents.append(tit_for_tat_agent)
+        self._agents.append(AASMAAgent(ENV_AGENT_NAMES[0], ENV_AGENT_NAMES[1], ENV_TARGET_NAMES[0]))
         # self._agents.append(FocusedAgent(name, ENV_TARGET_NAMES[0],
         #                                  visualizer = visualizer))
         # self._agents.append(RandomAgent(name, nb_actions,
         #                                 visualizer = visualizer))
-        self._agents.append(AASMAAgent(name, ENV_AGENT_NAMES[ENV_AGENT_NAMES.index(name) - 1], ENV_TARGET_NAMES[0]))
-
-        self._agents.append(AASMAAgent(name, ENV_AGENT_NAMES[ENV_AGENT_NAMES.index(name) - 1], ENV_TARGET_NAMES[0]))
-
+        # print("creating new agents")
+        #
+        # self._agents.append(AASMAAgent(ENV_AGENT_NAMES[0], ENV_AGENT_NAMES[1], ENV_TARGET_NAMES[0]))
         self.current_agent = self._select_agent(P_FOCUSED)
 
     def _select_agent(self, p_focused):
@@ -352,25 +357,25 @@ class PigChaseHumanAgent(GuiAgent):
 
         elif self._episode_has_ended:
 
-            if not hasattr(self, "_init_overlay") or not self._init_overlay:
-                self._create_overlay()
-            self._init_overlay.delete("all")
-            self._init_overlay.create_rectangle(
-                10, 10, 590, 290, fill="white", outline="red", width="5")
-            self._init_overlay.create_text(
-                300, 80, text='Finished episode %d of %d' % (self._episode, self._max_episodes),
-                font=('Helvetica', '18'))
-            self._init_overlay.create_text(
-                300, 120, text='Score: %d' % sum(self._rewards),
-                font=('Helvetica', '18'))
-            if self._episode > 1:
-                self._init_overlay.create_text(
-                    300, 160, text='Average over %d episodes: %.2f' % (self._episode, np.mean(self._scores)),
-                    font=('Helvetica', '18'))
-            self._init_overlay.create_text(
-                300, 220, width=360,
-                text="Press RETURN to start the next episode, ESC to exit.",
-                font=('Helvetica', '14'), fill="black")
+            # if not hasattr(self, "_init_overlay") or not self._init_overlay:
+            #     self._create_overlay()
+            # self._init_overlay.delete("all")
+            # self._init_overlay.create_rectangle(
+            #     10, 10, 590, 290, fill="white", outline="red", width="5")
+            # self._init_overlay.create_text(
+            #     300, 80, text='Finished episode %d of %d' % (self._episode, self._max_episodes),
+            #     font=('Helvetica', '18'))
+            # self._init_overlay.create_text(
+            #     300, 120, text='Score: %d' % sum(self._rewards),
+            #     font=('Helvetica', '18'))
+            # if self._episode > 1:
+            #     self._init_overlay.create_text(
+            #         300, 160, text='Average over %d episodes: %.2f' % (self._episode, np.mean(self._scores)),
+            #         font=('Helvetica', '18'))
+            # self._init_overlay.create_text(
+            #     300, 220, width=360,
+            #     text="Press RETURN to start the next episode, ESC to exit.",
+            #     font=('Helvetica', '14'), fill="black")
             self._root.update()
 
         elif hasattr(self, "_init_overlay") and self._init_overlay:

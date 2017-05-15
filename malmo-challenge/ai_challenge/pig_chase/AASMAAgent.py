@@ -3,15 +3,15 @@ from malmopy.agent import BaseAgent
 from common import visualize_training, Entity, ENV_TARGET_NAMES, ENV_ENTITIES, ENV_AGENT_NAMES,\
         ENV_ACTIONS, ENV_CAUGHT_REWARD, ENV_BOARD_SHAPE
 from a_star import a_star
+import traceback
 class AASMAAgent(BaseAgent):
     ACTIONS = ENV_ACTIONS
     DOOR1_POS = (4, 1)
     DOOR2_POS = (4, 7)
-    alpha = 0.4
+    bonification = 0.2
     initial_belief = 1
-    threshold = 0.5
 
-    def __init__(self, name, other_agent, target, visualizer = None):
+    def __init__(self, name, other_agent, target, visualizer = None, alpha=0.4, threshold=0.5, global_alpha=0.4):
         super(AASMAAgent, self).__init__(name, len(AASMAAgent.ACTIONS), visualizer=visualizer)
         self._target = str(target)
         self._other_agent = str(other_agent)
@@ -20,11 +20,31 @@ class AASMAAgent(BaseAgent):
         self._previous_pos = None
         self._action_list = []
         self._belief = self.initial_belief
+        self._global_belief = self.initial_belief
         self._desires = []
         self._intentions = []
         self._timestep = 0
+        self._num_treason = 0
+        self.alpha = alpha
+        self.global_alpha = global_alpha
+        self.threshold = threshold
+        self.is_impossible = False
+        self.step = 0
+        self._num_episode = 0
+
+        # self._previous_me_cost_door1 = None
+        # self._previous_me_cost_door2 = None
+        # self._previous_me_cost_pig = None
+
+        self._previous_other_cost_door1 = None
+        self._previous_other_cost_door2 = None
+        self._previous_other_cost_pig = None
+
+
 
     def act(self, state2, reward, done, is_training=False):
+        self.step += 1
+
         if done:
             self._action_list = []
             self._previous_target_pos = None
@@ -32,16 +52,35 @@ class AASMAAgent(BaseAgent):
             self._previous_pos = None
             self._desires = []
             self._intentions = []
+
             if reward <= 0:
-                print('i was fooled')
-                self._belief = min(0.25, self._belief)
+                if self.is_impossible:
+                    print('%s: pig was impossible to catch' % self.name)
+                else:
+                    print('%s: i was fooled' % self.name)
+                    self._global_belief = max(0.0, self._global_belief - self.global_alpha)
+                    self._num_treason += 1
             elif reward <= 5:
-                print('i fooled him')
+                self._global_belief = (self._global_belief + self._belief) / 2
+                print('%s: i fooled him' % self.name)
             else:
-                self._belief = max(0.75, self._belief)
-                print('we cooperated')
-            print('new episode')
+                self._global_belief = min(self._global_belief + self.global_alpha, 1.0)
+                print('%s: we cooperated' % self.name)
+
+            print('global belief - %f' % self._global_belief)
+            self._belief = self._global_belief
             self._timestep = 0
+            # self._belief = min(1.0, self._belief + self.bonification)
+            self._previous_other_cost_door1 = None
+            self._previous_other_cost_door2 = None
+            self._previous_other_cost_pig = None
+
+            # print('he ran %d times' % self._num_treason)
+            self.add_entry_to_visualizer('Debug', 'global_belief', self._global_belief, self._num_episode)
+            self._num_episode += 1
+
+            # always a different opponent
+            self._belief = self.initial_belief
             return 0
 
         try:
@@ -75,32 +114,46 @@ class AASMAAgent(BaseAgent):
                 self._previous_pos = me
 
             _, me_cost_now_door1 = self.compute_distance_to_door1(me, state)
-            _, me_cost_prev_door1 = self.compute_distance_to_door1(self._previous_pos, state)
             _, me_cost_now_door2 = self.compute_distance_to_door2(me, state)
-            _, me_cost_prev_door2 = self.compute_distance_to_door2(self._previous_pos, state)
             _, me_cost_now_pig = self.compute_distance_to_pig(me, target, state)
-            _, me_cost_prev_pig = self.compute_distance_to_pig(self._previous_pos,target, state)
 
             _, other_cost_now_door1 = self.compute_distance_to_door1(other, state)
-            _, other_cost_prev_door1 = self.compute_distance_to_door1(self._previous_other_pos, state)
             _, other_cost_now_door2 = self.compute_distance_to_door2(other, state)
-            _, other_cost_prev_door2 = self.compute_distance_to_door2(self._previous_other_pos, state)
             other_acc_now_pig, other_cost_now_pig = self.compute_distance_to_pig(other, self._previous_target_pos, state, True)
-            _, other_cost_prev_pig = self.compute_distance_to_pig(self._previous_other_pos, self._previous_target_pos, state)
+
+            # if self._previous_me_cost_door1 is None:
+            #     self._previous_me_cost_door1 = me_cost_now_door1
+            # if self._previous_me_cost_door2 is None:
+            #     self._previous_me_cost_door2 = me_cost_now_door2
+            # if self._previous_me_cost_pig is None:
+            #     self._previous_me_cost_pig = me_cost_now_pig
+
+            if self._previous_other_cost_door1 is None:
+                self._previous_other_cost_door1 = other_cost_now_door1
+            if self._previous_other_cost_door2 is None:
+                self._previous_other_cost_door2 = other_cost_now_door2
+            if self._previous_other_cost_pig is None:
+                self._previous_other_cost_pig = other_cost_now_pig
+
+            # me_cost_prev_door1 = self._previous_me_cost_door1
+            # me_cost_prev_door2 = self._previous_me_cost_door2
+            # me_cost_prev_pig = self._previous_me_cost_pig
+            other_cost_prev_door1 = self._previous_other_cost_door1
+            other_cost_prev_door2 = self._previous_other_cost_door2
+            other_cost_prev_pig = self._previous_other_cost_pig
 
             other_delta_pig = other_cost_now_pig - other_cost_prev_pig
-            if other_cost_now_door1 < other_cost_now_door2:
+            if other_cost_prev_door1 < other_cost_prev_door2:
                 other_delta_doors = other_cost_now_door1 - other_cost_prev_door1
+            elif other_cost_prev_door1 == other_cost_prev_door2:
+                other_delta_doors = min(other_cost_now_door1 - other_cost_prev_door1, other_cost_now_door2 - other_cost_prev_door2)
             else:
                 other_delta_doors = other_cost_now_door2 - other_cost_prev_door2
 
-            print()
-            print('pig was at %s and now is at %s' % (self._previous_target_pos, target))
-            print('prev_pig vs now_pig', other_cost_prev_pig, other_cost_now_pig)
-            print('prev_d1 vs now_d1', other_cost_prev_door1, other_cost_now_door1)
-            print('prev_d2 vs now_d2', other_cost_prev_door2, other_cost_now_door2)
-
-            self._belief = self.belief_update(self._belief, other_delta_pig, other_delta_doors)
+            other_stayed = self._previous_other_pos[1] == other[1]
+            other_adj_to_pig = other[1] in self.neighbors(target, state)
+            self._belief = self.belief_update(self._belief, other_delta_pig, other_delta_doors, other_stayed, other_adj_to_pig)
+            # print('local belief - %f' % self._belief)
             self._desires = self.options(self._belief, min(me_cost_now_door1, me_cost_now_door2),
                                          min(other_cost_now_door1, other_cost_now_door2), target, state)
             self._intentions = self.filter(self._belief, self._desires, self._intentions, target,
@@ -108,20 +161,21 @@ class AASMAAgent(BaseAgent):
                                            other_acc_now_pig[-2][1] if len(other_acc_now_pig) > 1 else other[1], state)
             self._action_list = self.plan(self._belief, self._intentions, me, state)
 
-            # print('belief', self._belief)
-            # print('desires', self._desires)
-            # print('intention', self._intentions)
-            # if not self._previous_target_pos == target:
-            #     # Target has moved, or this is the first action of a new mission - calculate a new action list
-            #     self._previous_target_pos = target
-            #
-            #     path = self.plan(self._belief, self._intentions, me, state)
-            #     self._action_list = path
             self._previous_other_pos = other
             self._previous_pos = me
             self._previous_target_pos = target
             self._timestep += 1
 
+            # self._previous_me_cost_door1 = me_cost_now_door1
+            # self._previous_me_cost_door2 = me_cost_now_door2
+            # self._previous_me_cost_pig = me_cost_now_pig
+            self._previous_other_cost_door1 = other_cost_now_door1
+            self._previous_other_cost_door2 = other_cost_now_door2
+            self._previous_other_cost_pig = other_cost_now_pig
+
+            print('belief', self._belief)
+            print('desire', self._desires)
+            self.add_entry_to_visualizer('Debug', 'beliefs', self._belief, self.step)
             
             if self._action_list is not None and len(self._action_list) > 0:
                 action = self._action_list.popleft()
@@ -137,20 +191,28 @@ class AASMAAgent(BaseAgent):
             print(e)
             return AASMAAgent.ACTIONS.index("turn 1")  # substitutes for a no-op command
 
-    def belief_update(self, belief, other_delta_pig, other_delta_doors):
+    def belief_update(self, belief, other_delta_pig, other_delta_doors, other_stayed, other_adj_to_pig):
         if self._timestep == 0:
             return belief
+        def update_coop(b):
+            return min(1.0, b+self.alpha)
+        def update_defect(b):
+            return max(0.0, b-self.alpha)
+        if other_stayed and other_adj_to_pig:
+            # he is waiting for us
+            print("waiting for us, good!")
+            return update_coop(belief)
         if other_delta_pig < 0 and other_delta_pig < other_delta_doors:
             # he has come closer to the pig! (good guy)
             print("good guy")
-            return min(belief + self.alpha, 1.0)
+            return update_coop(belief)
         elif other_delta_pig == other_delta_doors:
             # i cant know what he is up to
             print("idk...")
             return belief
         else:
             print("bad guy")
-            return max(0.0, belief - self.alpha)
+            return update_defect(belief)
         # if other_delta_doors == 0:
         #     # not going to doors
         #     print ("good")
@@ -177,7 +239,8 @@ class AASMAAgent(BaseAgent):
 
     def options(self, belief, me_cost_door, other_cost_door, pig_pos, state):
         adj_positions = self.neighbors(pig_pos, state)
-        if len(adj_positions) > 2:
+        self.is_impossible = len(adj_positions) > 2
+        if self.is_impossible:
             # impossible to catch!
             if me_cost_door < other_cost_door:
                 # I'm closer
@@ -254,3 +317,7 @@ class AASMAAgent(BaseAgent):
                       n[0], n[1]] != 'sand']
 
         return result
+
+    def add_entry_to_visualizer(self, tag, name, value, step):
+        if self.can_visualize:
+            self._visualizer.add_entry(step, '%s/%s' % (tag, name), value)
