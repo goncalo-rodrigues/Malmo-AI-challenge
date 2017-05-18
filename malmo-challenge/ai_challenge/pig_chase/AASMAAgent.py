@@ -4,12 +4,14 @@ from common import visualize_training, Entity, ENV_TARGET_NAMES, ENV_ENTITIES, E
         ENV_ACTIONS, ENV_CAUGHT_REWARD, ENV_BOARD_SHAPE
 from a_star import a_star
 import traceback
+import numpy as np
 class AASMAAgent(BaseAgent):
     ACTIONS = ENV_ACTIONS
     DOOR1_POS = (4, 1)
     DOOR2_POS = (4, 7)
     bonification = 0.2
     initial_belief = 1
+    GAMMA = 0.8
 
     def __init__(self, name, other_agent, target, visualizer = None, alpha=0.4, threshold=0.5, global_alpha=0.4):
         super(AASMAAgent, self).__init__(name, len(AASMAAgent.ACTIONS), visualizer=visualizer)
@@ -25,13 +27,14 @@ class AASMAAgent(BaseAgent):
         self._intentions = []
         self._timestep = 0
         self._num_treason = 0
+        self._belief_array = np.array([0.5,0.5/3, 0.5/3, 0.5/3])
         self.alpha = alpha
         self.global_alpha = global_alpha
         self.threshold = threshold
         self.is_impossible = False
         self.step = 0
         self._num_episode = 0
-
+        self._gamma = self.GAMMA
         # self._previous_me_cost_door1 = None
         # self._previous_me_cost_door2 = None
         # self._previous_me_cost_pig = None
@@ -81,6 +84,8 @@ class AASMAAgent(BaseAgent):
 
             # always a different opponent
             self._belief = self.initial_belief
+            self._belief_array[0] = self._global_belief
+            self._belief_array /= sum(self._belief_array)
             return 0
 
         try:
@@ -143,16 +148,13 @@ class AASMAAgent(BaseAgent):
             other_cost_prev_pig = self._previous_other_cost_pig
 
             other_delta_pig = other_cost_now_pig - other_cost_prev_pig
-            if other_cost_prev_door1 < other_cost_prev_door2:
-                other_delta_doors = other_cost_now_door1 - other_cost_prev_door1
-            elif other_cost_prev_door1 == other_cost_prev_door2:
-                other_delta_doors = min(other_cost_now_door1 - other_cost_prev_door1, other_cost_now_door2 - other_cost_prev_door2)
-            else:
-                other_delta_doors = other_cost_now_door2 - other_cost_prev_door2
+            other_delta_door1 = other_cost_now_door1 - other_cost_prev_door1
+            other_delta_door2 = other_cost_now_door2 - other_cost_prev_door2
 
             other_stayed = self._previous_other_pos[1] == other[1]
             other_adj_to_pig = other[1] in self.neighbors(target, state)
-            self._belief = self.belief_update(self._belief, other_delta_pig, other_delta_doors, other_stayed, other_adj_to_pig)
+            self._belief = self.belief_update(self._belief, other_delta_pig, other_delta_door1, other_delta_door2, other_stayed, other_adj_to_pig,
+                                              1 if other_cost_prev_door1 < other_cost_prev_door2 else 2)
             # print('local belief - %f' % self._belief)
             self._desires = self.options(self._belief, min(me_cost_now_door1, me_cost_now_door2),
                                          min(other_cost_now_door1, other_cost_now_door2), target, state)
@@ -191,28 +193,43 @@ class AASMAAgent(BaseAgent):
             print(e)
             return AASMAAgent.ACTIONS.index("turn 1")  # substitutes for a no-op command
 
-    def belief_update(self, belief, other_delta_pig, other_delta_doors, other_stayed, other_adj_to_pig):
+    def belief_update(self, belief, other_delta_pig, other_delta_door1, other_delta_door2, other_stayed, other_adj_to_pig, other_closest_door):
         if self._timestep == 0:
             return belief
-        def update_coop(b):
-            return min(1.0, b+self.alpha)
-        def update_defect(b):
-            return max(0.0, b-self.alpha)
-        if other_stayed and other_adj_to_pig:
-            # he is waiting for us
-            print("waiting for us, good!")
-            return update_coop(belief)
-        if other_delta_pig < 0 and other_delta_pig < other_delta_doors:
-            # he has come closer to the pig! (good guy)
-            print("good guy")
-            return update_coop(belief)
-        elif other_delta_pig == other_delta_doors:
-            # i cant know what he is up to
-            print("idk...")
-            return belief
-        else:
-            print("bad guy")
-            return update_defect(belief)
+
+        going_pig = (other_stayed and other_adj_to_pig) or other_delta_pig < 0
+        going_d1 = other_delta_door1 < 0 and other_closest_door == 1
+        going_d2 = other_delta_door2 < 0 and other_closest_door == 2
+        going_random = not going_d1 and not going_d2 and not going_pig
+        self._belief_array = self._gamma * self._belief_array + np.array([
+                                        self.alpha if going_pig else 0,
+                                        self.alpha if going_d1 else 0,
+                                        self.alpha if going_d2 else 0,
+                                        self.alpha if going_random else 0])
+        self._belief_array /= sum(self._belief_array)
+
+        print('belief array', self._belief_array)
+        return self._belief_array[0]
+
+        # def update_coop(b):
+        #     return min(1.0, b+self.alpha)
+        # def update_defect(b):
+        #     return max(0.0, b-self.alpha)
+        # if other_stayed and other_adj_to_pig:
+        #     # he is waiting for us
+        #     print("waiting for us, good!")
+        #     return update_coop(belief)
+        # if other_delta_pig < 0 and other_delta_pig < other_delta_doors:
+        #     # he has come closer to the pig! (good guy)
+        #     print("good guy")
+        #     return update_coop(belief)
+        # elif other_delta_pig == other_delta_doors:
+        #     # i cant know what he is up to
+        #     print("idk...")
+        #     return belief
+        # else:
+        #     print("bad guy")
+        #     return update_defect(belief)
         # if other_delta_doors == 0:
         #     # not going to doors
         #     print ("good")

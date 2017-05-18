@@ -34,7 +34,7 @@ from malmopy.agent import QLearnerAgent, BaseAgent, RandomAgent
 from malmopy.agent.gui import GuiAgent
 from AASMAAgent import AASMAAgent
 
-P_FOCUSED = 0.
+P_FOCUSED = 1.
 CELL_WIDTH = 33
 
 
@@ -61,12 +61,12 @@ class PigChaseChallengeAgent(BaseAgent):
         self._agents = []
         defective_agent = DefectiveAgent(ENV_AGENT_NAMES[0], visualizer=visualizer)
         tit_for_tat_agent = TitForTatAgent(ENV_AGENT_NAMES[0], ENV_AGENT_NAMES[1], ENV_TARGET_NAMES[0], visualizer=visualizer)
-        self._agents.append(tit_for_tat_agent)
-        self._agents.append(AASMAAgent(ENV_AGENT_NAMES[0], ENV_AGENT_NAMES[1], ENV_TARGET_NAMES[0]))
-        # self._agents.append(FocusedAgent(name, ENV_TARGET_NAMES[0],
-        #                                  visualizer = visualizer))
-        # self._agents.append(RandomAgent(name, nb_actions,
-        #                                 visualizer = visualizer))
+        # self._agents.append(tit_for_tat_agent)
+        # self._agents.append(AASMAAgent(ENV_AGENT_NAMES[0], ENV_AGENT_NAMES[1], ENV_TARGET_NAMES[0]))
+        self._agents.append(FocusedAgent(name, ENV_TARGET_NAMES[0],
+                                         visualizer = visualizer))
+        self._agents.append(RandomAgent(name, nb_actions,
+                                        visualizer = visualizer))
         # print("creating new agents")
         #
         # self._agents.append(AASMAAgent(ENV_AGENT_NAMES[0], ENV_AGENT_NAMES[1], ENV_TARGET_NAMES[0]))
