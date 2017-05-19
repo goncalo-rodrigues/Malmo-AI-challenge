@@ -276,7 +276,7 @@ class AASMAAgent(BaseAgent):
 
             return pig_pos
         elif desires == "stay":
-            return best_door_pos
+            return ENV_ACTIONS.index("turn 1")
         else:
             return best_door_pos
 

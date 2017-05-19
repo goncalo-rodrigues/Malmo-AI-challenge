@@ -29,34 +29,13 @@ if __name__ == '__main__':
     import numpy as np
     import os
     clients = [('127.0.0.1', 10000), ('127.0.0.1', 10001)]
-    alphas = np.arange(0, 1, 0.1)
-    episodes = 1000
-    outputfile = "metrics.txt"
-    if not os.path.exists(outputfile):
-        with open(outputfile, "w") as out_file:
-            out_file.write('alpha,threshold,mean,var,count\n')
 
-    for thresh in [0.5]:
-        print('-------', 'thresh changed', thresh, '--------')
-        for alpha in [0.8, 0.9, 0.6, 0.7]:
-            print('-------', 'alpha changed', alpha, '--------')
-            agent = AASMAAgent(ENV_AGENT_NAMES[1], ENV_AGENT_NAMES[0], ENV_TARGET_NAMES[0], alpha=alpha, threshold=thresh)
-            agent2 = AASMAAgent(ENV_AGENT_NAMES[1], ENV_AGENT_NAMES[0], ENV_TARGET_NAMES[0], alpha=alpha, threshold=thresh)
+    agent = AASMAAgent(ENV_AGENT_NAMES[1], ENV_AGENT_NAMES[0], ENV_TARGET_NAMES[0])
+    agent2 = AASMAAgent(ENV_AGENT_NAMES[1], ENV_AGENT_NAMES[0], ENV_TARGET_NAMES[0])
 
-            # agent = FocusedAgent(ENV_AGENT_NAMES[1], ENV_TARGET_NAMES[0])
-            eval = PigChaseEvaluator(clients, agent, agent2, PigChaseSymbolicStateBuilder(), num_episodes=episodes)
-            eval.run()
-            metrics = eval.get_metrics()
+    # agent = FocusedAgent(ENV_AGENT_NAMES[1], ENV_TARGET_NAMES[0])
+    eval = PigChaseEvaluator(clients, agent, agent2, PigChaseSymbolicStateBuilder())
+    eval.run()
 
-
-            with open(outputfile, "a") as myfile:
-                formatstr = "%f,%f,%f,%f,%d\n"
-                myfile.write(formatstr % (alpha, thresh,
-                             metrics['100k']['mean'],
-                             metrics['100k']['var'],
-                             metrics['100k']['count']))
-                myfile.write(formatstr % (alpha, thresh,
-                             metrics['500k']['mean'],
-                             metrics['500k']['var'],
-                             metrics['500k']['count']))
+    eval.save('AASMA vs itself', 'pig_chase_results_itself.json')
 
